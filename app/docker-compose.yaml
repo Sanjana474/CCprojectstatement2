@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+          - "5672:5672" 
+          - "15672:15672"
+    environment:
+        RABBITMQ_DEFAULT_USER: guest
+        RABBITMQ_DEFAULT_PASS: guest
+    restart: always
+    networks:
+      - rabbit-net
+
+  mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: student
+      MYSQL_ROOT_PASSWORD: uK3bT#7Vv@Gh
+    ports:
+      - '3306:3306' 
+    expose:
+      - '3306'
+    volumes:
+      - ./student.sql:/docker-entrypoint-initdb.d/student.sql
+    networks:
+      - backend-net
+
+  producer:
+    build: ./producer
+    ports:
+      - "5000:5000"
+    depends_on:
+      - rabbitmq
+    networks:
+      - frontend-net
+      - backend-net
+      - rabbit-net
+    command: sh -c "sleep 60 && python producer.py"
+
+  consumer_one:
+    build: ./consumer_one
+    depends_on:
+      - rabbitmq
+    networks:
+      - backend-net
+      - rabbit-net
+    command: sh -c "sleep 30 && python healthcheck.py"
+
+  consumer_two:
+    build: ./consumer_two
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - backend-net
+      - rabbit-net
+    command: sh -c "sleep 30 && python insertion.py"
+
+  consumer_three:
+    build: ./consumer_three
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - backend-net
+      - rabbit-net
+    command: sh -c "sleep 30 && python deletion.py"
+
+  consumer_four:
+    build: ./consumer_four
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - backend-net
+      - rabbit-net
+    command: sh -c "sleep 30 && python read.py"
+
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+  rabbit-net:
+    driver: bridge
